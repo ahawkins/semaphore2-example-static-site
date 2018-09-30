@@ -1,0 +1,33 @@
+version: "v1.0"
+name: First pipeline example
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+blocks:
+  - name: "Deploy"
+    task:
+      env_vars:
+        # TODO: change as required
+        - name: AWS_DEFAULT_REGION
+          value: ap-southeast-1
+        - name: BUCKET_NAME
+          value: semaphore2-static-site-example
+      secrets:
+        - name: aws
+      prologue:
+        commands:
+          - curl -sSL -o hugo.tar.gz https://github.com/gohugoio/hugo/releases/download/v0.49/hugo_0.49_Linux-64bit.tar.gz
+          - tar -zxf hugo.tar.gz
+          - sudo cp hugo /usr/local/bin
+          - hugo version
+          - sudo pip install awscli
+          - checkout
+          - git submodule update --init
+
+      jobs:
+        - name: Push to S3
+          commands:
+            - hugo --baseURL http://$BUCKET_NAME.s3-website-$AWS_DEFAULT_REGION.amazonaws.com
+            - aws s3 sync --delete public/ s3://$BUCKET_NAME
